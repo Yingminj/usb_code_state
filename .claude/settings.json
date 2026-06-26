@@ -1,0 +1,3 @@
+{
+  "_comment": "Status-light hooks are installed globally in ~/.claude/settings.json so they apply to every session. See README.md."
+}
