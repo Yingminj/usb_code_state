@@ -23,21 +23,35 @@ other two channels off and the target on.
 ## Files
 
 - `claude_light.py` — controller + Claude Code hook dispatcher
-- `setup_root.sh` — one-time root setup (binds driver, installs udev rule)
+- `setup_root.sh` — one-click setup: resolves/creates the Python env, then binds the driver and installs the udev rule
+- `install_hooks.sh` — merges the status-light hooks into the global `~/.claude/settings.json`
+- `.claude_light_python` — interpreter path recorded by `setup_root.sh` for `install_hooks.sh` (git-ignored, machine-specific)
 - `~/.claude/settings.json` — hooks mapping Claude Code events to light states (installed globally, applies to all sessions)
 
 ## Setup
 
-1. Conda env (already created): `conda create -n usbstatus python=3.11 pyserial`
-2. Privileged setup (binds CH340 driver, creates `/dev/claude_light`, sets perms):
-   ```
-   sudo bash setup_root.sh
-   ```
+Two steps, both run as your **normal user** (no `sudo` prefix — `setup_root.sh`
+escalates with `sudo` itself only for the device/udev steps):
+
+```
+bash setup_root.sh      # 1. env + driver + udev, then a smoke test
+bash install_hooks.sh   # 2. wire the light into Claude Code
+```
+
+Then start a **new** Claude Code session for the hooks to take effect.
+
+`setup_root.sh` finds a pyserial-capable Python in this order: `$CLAUDE_LIGHT_PYTHON`
+→ a conda env named `usbstatus` (created automatically if missing) → system
+`python3` with `pip install --user pyserial`. The resolved path is written to
+`.claude_light_python` and baked into the hook command by `install_hooks.sh`.
+Both scripts are idempotent — re-run them any time (e.g. after moving the repo or
+changing the interpreter); `install_hooks.sh` replaces only its own hook entries
+and leaves any other hooks you've configured untouched.
 
 ## Manual use
 
 ```
-PY=/home/kewei/anaconda3/envs/usbstatus/bin/python
+PY=$(cat .claude_light_python)           # interpreter recorded by setup_root.sh
 $PY claude_light.py test                 # cycle yellow -> green -> red -> off
 $PY claude_light.py color yellow on      # show one color (others off)
 $PY claude_light.py raw red flash        # single channel, flashing
